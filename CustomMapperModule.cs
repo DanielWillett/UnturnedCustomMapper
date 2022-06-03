@@ -44,9 +44,8 @@ public class CustomMapperModule : IModuleNexus
     }
     private void OnLevelLoaded(int level)
     {
-        if (init || EditorUI.window == null) return;
         object? obj = typeof(EditorPauseUI).GetField("container", BindingFlags.Static | BindingFlags.NonPublic)?.GetValue(null);
-        if (obj is SleekFullscreenBox box)
+        if (obj is SleekFullscreenBox box && (customMapperButton == null || box.FindIndexOfChild(customMapperButton) == -1))
         {
             init = true;
             parent = new GameObject("CustomMapper");

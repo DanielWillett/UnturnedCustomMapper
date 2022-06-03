@@ -23,6 +23,7 @@ public class CustomMapperUI : MonoBehaviour
     private static ISleekButton currentLocationButton;
     private static ISleekButton locationSetButton;
     private static ISleekImage preview;
+    private static ISleekToggle togglePreview;
     private static RenderTexture txt;
 
     private static ISleekFloat32Field posX1Field;
@@ -31,6 +32,7 @@ public class CustomMapperUI : MonoBehaviour
     private static ISleekFloat32Field posY2Field;
     private static ISleekFloat32Field rotField;
     private static ISleekField locField;
+    private static ISleekField outputField;
     private static ISleekFloat32Field locRadField;
     //private static ISleekInt32Field resolution;
 #nullable restore
@@ -137,7 +139,7 @@ public class CustomMapperUI : MonoBehaviour
         resolution.sizeOffset_Y = 30;
         resolution.tooltipText = "Resolution XY";
         container.AddChild(resolution);
-        */
+
         chartifyButton = new SleekButtonIcon(bundle1.load<Texture2D>("Chart"));
         chartifyButton.positionOffset_X = -100;
         chartifyButton.positionOffset_Y = -115;
@@ -148,6 +150,7 @@ public class CustomMapperUI : MonoBehaviour
         chartifyButton.text = local1.format("Chart_Button");
         chartifyButton.onClickedButton += OnClickChartify;
         container.AddChild(chartifyButton);
+        */
 
         mapifyButton = new SleekButtonIcon(bundle1.load<Texture2D>("Map"));
         mapifyButton.positionOffset_X = 110;
@@ -209,24 +212,56 @@ public class CustomMapperUI : MonoBehaviour
         locationSetButton.positionOffset_Y = 45;
         locationSetButton.positionScale_X = 0.5f;
         locationSetButton.positionScale_Y = 0.5f;
-        locationSetButton.sizeOffset_X = 160;
+        locationSetButton.sizeOffset_X = 200;
         locationSetButton.sizeOffset_Y = 30;
         locationSetButton.text = "From Distance";
         locationSetButton.onClickedButton += OnClickSetupLocation;
         container.AddChild(locationSetButton);
 
+        outputField = Glazier.Get().CreateStringField();
+        outputField.maxLength = 256;
+        outputField.positionOffset_X = 110;
+        outputField.positionOffset_Y = -195;
+        outputField.positionScale_X = 0.5f;
+        outputField.positionScale_Y = 0.5f;
+        outputField.sizeOffset_X = 630;
+        outputField.sizeOffset_Y = 30;
+        string? str1 = Environment.GetEnvironmentVariable("OneDrive");
+        if (str1 is null) str1 = Environment.GetEnvironmentVariable("UserProfile");
+        string path = str1 is null ? Level.info.path + "/Map_2.png" : Path.Combine(str1, "Desktop", "Map.png");
+        outputField.text = path;
+        container.AddChild(outputField);
+
+        togglePreview = Glazier.Get().CreateToggle();
+        togglePreview.positionOffset_X = -100;
+        togglePreview.positionOffset_Y = -155;
+        togglePreview.positionScale_X = 0.5f;
+        togglePreview.positionScale_Y = 0.5f;
+        togglePreview.sizeOffset_X = 40;
+        togglePreview.sizeOffset_Y = 40;
+        togglePreview.tooltipText = "Preview Visible";
+        togglePreview.state = false;
+        togglePreview.onToggled += OnToggled;
+        container.AddChild(togglePreview);
+
         preview = Glazier.Get().CreateImage(txt);
-        preview.positionOffset_X = -512;
+        preview.positionOffset_X = -384;
         preview.positionOffset_Y = 0;
         preview.positionScale_X = 0.25f;
         preview.positionScale_Y = 0.25f;
-        preview.sizeOffset_X = 1024;
-        preview.sizeOffset_Y = 1024;
+        preview.sizeOffset_X = 512;
+        preview.sizeOffset_Y = 512;
+        preview.isVisible = false;
         container.AddChild(preview);
 
         bundle1.unload();
 
         UnturnedLog.info("[CUSTOM MAPPER] Added UI");
+    }
+
+    private void OnToggled(ISleekToggle toggle, bool state)
+    {
+        preview.isVisible = togglePreview.state;
     }
 
     private void OnClickSetupLocation(ISleekElement button)
@@ -326,7 +361,7 @@ public class CustomMapperUI : MonoBehaviour
             string destFileName = Level.info.path + "/Map_TEMP.png";
 
             if (File.Exists(mapName)) // save the old map in a temp file
-                File.Copy(mapName, destFileName);
+                File.Copy(mapName, destFileName, true);
 
             Vector3 t1 = mapper.position;
             Quaternion t2 = mapper.rotation;
@@ -362,22 +397,25 @@ public class CustomMapperUI : MonoBehaviour
             Texture2D txt = new Texture2D(Level.size, Level.size);
             txt.LoadImage(File.ReadAllBytes(mapName));
             preview.texture = txt;
-
-
-            // save to desktop
-            string? str1 = Environment.GetEnvironmentVariable("OneDrive");
-            if (str1 is null) str1 = Environment.GetEnvironmentVariable("UserProfile");
-            string path = str1 is null ? Level.info.path + "Map_2.png" : Path.Combine(str1, "Desktop", "Map.png");
-
-            File.WriteAllBytes(path, txt.EncodeToPNG());
             File.Delete(mapName);
             if (File.Exists(destFileName))
             {
-                File.Copy(destFileName, mapName);
+                File.Copy(destFileName, mapName, true);
                 File.Delete(destFileName);
             }
+            if (!string.IsNullOrEmpty(outputField.text))
+            {
+                DirectoryInfo info = new FileInfo(outputField.text).Directory;
+                if (!info.Exists) info.Create();
+                File.WriteAllBytes(outputField.text, txt.EncodeToPNG());
+                UnturnedLog.info("[CUSTOM MAPPER] Success! Saved to \"" + outputField.text + "\".");
+            }
+            else
+            {
+                UnturnedLog.info("[CUSTOM MAPPER] Success! Not saved.");
+            }
 
-            UnturnedLog.info("[CUSTOM MAPPER] Success! Saved to \"" + path + "\".");
+
         }
     }
 
